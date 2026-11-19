@@ -1,0 +1,244 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Flower</title>
+
+<style>
+    body {
+        background: black;
+        color: white;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h1 {
+        color: violet;
+    }
+
+    canvas {
+        width: 100%;
+        max-width: 600px;
+        height: 500px;
+        display: block;
+        margin: auto;
+    }
+
+    button {
+        background: violet;
+        color: black;
+        border: none;
+        padding: 15px 35px;
+        border-radius: 25px;
+        font-size: 18px;
+        cursor: pointer;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>My Flower 🌸</h1>
+
+<canvas id="flower"></canvas>
+
+<button onclick="startFlower()">Start Flower</button>
+
+<audio id="music" src="music.mp3"></audio>
+
+<script>
+const canvas = document.getElementById("flower");
+const ctx = canvas.getContext("2d");
+
+let strokes = [];
+let x = 0, y = 0;
+let angle = 0;
+let penDown = true;
+let penColor = "violet";
+let currentStroke = {color: penColor, points: [{x, y}]};
+
+function addPoint(px, py) {
+    if (penDown) {
+        currentStroke.points.push({x: px, y: py});
+    }
+}
+
+function forward(distance) {
+    x += Math.cos(angle * Math.PI / 180) * distance;
+    y += Math.sin(angle * Math.PI / 180) * distance;
+    addPoint(x, y);
+}
+
+function left(degrees) {
+    angle -= degrees;
+}
+
+function right(degrees) {
+    angle += degrees;
+}
+
+function circle(radius, extent) {
+    const steps = 30;
+    const startAngle = Math.atan2(
+        y - (y - Math.cos(angle * Math.PI / 180) * radius),
+        x - (x + Math.sin(angle * Math.PI / 180) * radius)
+    );
+
+    const cx = x + Math.sin(angle * Math.PI / 180) * radius;
+    const cy = y - Math.cos(angle * Math.PI / 180) * radius;
+
+    const start = Math.atan2(y - cy, x - cx);
+
+    for (let i = 1; i <= steps; i++) {
+        const a = start - (extent * Math.PI / 180) * i / steps;
+        x = cx + radius * Math.cos(a);
+        y = cy + radius * Math.sin(a);
+        addPoint(x, y);
+    }
+
+    angle -= extent;
+}
+
+function penup() {
+    penDown = false;
+}
+
+function pendown() {
+    penDown = true;
+    currentStroke = {color: penColor, points: [{x, y}]};
+    strokes.push(currentStroke);
+}
+
+function setColor(color) {
+    penColor = color;
+    if (penDown) {
+        currentStroke = {color: penColor, points: [{x, y}]};
+        strokes.push(currentStroke);
+    }
+}
+
+// Draw the flower
+strokes.push(currentStroke);
+
+for (let i = 0; i < 36; i++) {
+    circle(100, 90);
+    left(90);
+    circle(100, 90);
+    left(10);
+}
+
+// Draw the stem
+penup();
+right(90);
+forward(100);
+pendown();
+setColor("green");
+forward(200);
+
+// Move halfway up the stem
+penup();
+forward(-100);
+pendown();
+
+// Draw the leaf
+right(90);
+circle(40, 90);
+left(90);
+circle(40, 90);
+
+// Prepare the drawing
+const allPoints = strokes.reduce(
+    (total, stroke) => total + stroke.points.length, 0
+);
+
+function draw(progress) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+
+    if (canvas.width !== Math.round(w * dpr) ||
+        canvas.height !== Math.round(h * dpr)) {
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+    }
+
+    const points = strokes.flatMap(s => s.points);
+    const minX = Math.min(...points.map(p => p.x));
+    const maxX = Math.max(...points.map(p => p.x));
+    const minY = Math.min(...points.map(p => p.y));
+    const maxY = Math.max(...points.map(p => p.y));
+
+    const scale = Math.min(
+        (w - 40) / (maxX - minX),
+        (h - 40) / (maxY - minY)
+    );
+
+    ctx.setTransform(
+        dpr * scale, 0, 0, dpr * scale,
+        dpr * (w - (maxX - minX) * scale) / 2 - dpr * minX * scale,
+        dpr * (h - (maxY - minY) * scale) / 2 - dpr * minY * scale
+    );
+
+    ctx.clearRect(
+        minX - 1000, minY - 1000,
+        w / scale + 2000, h / scale + 2000
+    );
+
+    let remaining = Math.floor(progress * allPoints);
+
+    for (const stroke of strokes) {
+        const pts = stroke.points;
+        const count = Math.min(remaining, pts.length);
+        remaining -= count;
+
+        if (count < 2) continue;
+
+        ctx.beginPath();
+        ctx.strokeStyle = stroke.color;
+        ctx.lineWidth = 3 / scale;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.moveTo(pts[0].x, pts[0].y);
+
+        for (let i = 1; i < count; i++) {
+            ctx.lineTo(pts[i].x, pts[i].y);
+        }
+
+        ctx.stroke();
+    }
+}
+
+let startTime;
+
+function animate(timestamp) {
+    const progress = Math.min((timestamp - startTime) / 30000, 1);
+    draw(progress);
+
+    if (progress < 1) {
+        requestAnimationFrame(animate);
+    }
+}
+
+function startFlower() {
+    startTime = null;
+    draw(0);
+
+    const music = document.getElementById("music");
+    music.currentTime = 0;
+    music.play().catch(() => {});
+
+    requestAnimationFrame(timestamp => {
+        startTime = timestamp;
+        animate(timestamp);
+    });
+}
+
+draw(0);
+</script>
+
+</body>
+</html>
