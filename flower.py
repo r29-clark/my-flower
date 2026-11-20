@@ -5,7 +5,7 @@ winsound.PlaySound("song.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
 
 bgcolor("Black")
 color("violet")
-speed(2)
+speed(4)
 
 # Draw the flower
 for i in range(36):

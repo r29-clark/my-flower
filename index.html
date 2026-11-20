@@ -7,29 +7,45 @@
 <title>My Flower</title>
 
 <style>
-    body {
-        background: black;
-        color: white;
-        font-family: Arial, sans-serif;
-        text-align: center;
+    * {
+        box-sizing: border-box;
+    }
+
+    html, body {
         margin: 0;
-        padding: 20px;
+        padding: 0;
+        width: 100%;
+        min-height: 100%;
+        background-color: black;
+    }
+
+    body {
+        font-family: Arial, sans-serif;
+        color: white;
+    }
+
+    /* Welcome screen */
+    #welcome {
+        position: fixed;
+        inset: 0;
+        background-color: black;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 25px;
+        z-index: 10;
     }
 
     h1 {
-        color: violet;
-    }
-
-    canvas {
-        width: 100%;
-        max-width: 600px;
-        height: 500px;
-        display: block;
-        margin: auto;
+        color: white;
+        text-align: center;
+        margin: 0;
+        font-size: 36px;
     }
 
     button {
-        background: violet;
+        background-color: white;
         color: black;
         border: none;
         padding: 15px 35px;
@@ -37,16 +53,38 @@
         font-size: 18px;
         cursor: pointer;
     }
+
+    /* Flower animation screen */
+    #flowerScreen {
+        display: none;
+        width: 100%;
+        min-height: 100vh;
+        background-color: black;
+        justify-content: center;
+        align-items: center;
+    }
+
+    canvas {
+        display: block;
+        width: 100%;
+        max-width: 600px;
+        height: min(80vh, 600px);
+    }
 </style>
 </head>
 
 <body>
 
-<h1>My Flower 🌸</h1>
+<!-- Welcome screen -->
+<div id="welcome">
+    <h1>My Flower 🌸</h1>
+    <button onclick="startFlower()">Start Flower</button>
+</div>
 
-<canvas id="flower"></canvas>
-
-<button onclick="startFlower()">Start Flower</button>
+<!-- Flower animation -->
+<div id="flowerScreen">
+    <canvas id="flower"></canvas>
+</div>
 
 <audio id="music" src="music.mp3"></audio>
 
@@ -55,11 +93,16 @@ const canvas = document.getElementById("flower");
 const ctx = canvas.getContext("2d");
 
 let strokes = [];
-let x = 0, y = 0;
+let x = 0;
+let y = 0;
 let angle = 0;
 let penDown = true;
-let penColor = "violet";
-let currentStroke = {color: penColor, points: [{x, y}]};
+let penColor = "red";
+
+let currentStroke = {
+    color: penColor,
+    points: [{x, y}]
+};
 
 function addPoint(px, py) {
     if (penDown) {
@@ -83,10 +126,6 @@ function right(degrees) {
 
 function circle(radius, extent) {
     const steps = 30;
-    const startAngle = Math.atan2(
-        y - (y - Math.cos(angle * Math.PI / 180) * radius),
-        x - (x + Math.sin(angle * Math.PI / 180) * radius)
-    );
 
     const cx = x + Math.sin(angle * Math.PI / 180) * radius;
     const cy = y - Math.cos(angle * Math.PI / 180) * radius;
@@ -95,8 +134,10 @@ function circle(radius, extent) {
 
     for (let i = 1; i <= steps; i++) {
         const a = start - (extent * Math.PI / 180) * i / steps;
+
         x = cx + radius * Math.cos(a);
         y = cy + radius * Math.sin(a);
+
         addPoint(x, y);
     }
 
@@ -109,19 +150,26 @@ function penup() {
 
 function pendown() {
     penDown = true;
-    currentStroke = {color: penColor, points: [{x, y}]};
+    currentStroke = {
+        color: penColor,
+        points: [{x, y}]
+    };
     strokes.push(currentStroke);
 }
 
 function setColor(color) {
     penColor = color;
+
     if (penDown) {
-        currentStroke = {color: penColor, points: [{x, y}]};
+        currentStroke = {
+            color: penColor,
+            points: [{x, y}]
+        };
         strokes.push(currentStroke);
     }
 }
 
-// Draw the flower
+// Draw flower
 strokes.push(currentStroke);
 
 for (let i = 0; i < 36; i++) {
@@ -131,7 +179,7 @@ for (let i = 0; i < 36; i++) {
     left(10);
 }
 
-// Draw the stem
+// Draw stem
 penup();
 right(90);
 forward(100);
@@ -139,38 +187,37 @@ pendown();
 setColor("green");
 forward(200);
 
-// Move halfway up the stem
+// Move halfway up stem
 penup();
 forward(-100);
 pendown();
 
-// Draw the leaf
+// Draw leaf
 right(90);
 circle(40, 90);
 left(90);
 circle(40, 90);
 
-// Prepare the drawing
+// Calculate drawing points
 const allPoints = strokes.reduce(
-    (total, stroke) => total + stroke.points.length, 0
+    (total, stroke) => total + stroke.points.length,
+    0
 );
+
+const points = strokes.flatMap(stroke => stroke.points);
+
+const minX = Math.min(...points.map(p => p.x));
+const maxX = Math.max(...points.map(p => p.x));
+const minY = Math.min(...points.map(p => p.y));
+const maxY = Math.max(...points.map(p => p.y));
 
 function draw(progress) {
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
 
-    if (canvas.width !== Math.round(w * dpr) ||
-        canvas.height !== Math.round(h * dpr)) {
-        canvas.width = Math.round(w * dpr);
-        canvas.height = Math.round(h * dpr);
-    }
-
-    const points = strokes.flatMap(s => s.points);
-    const minX = Math.min(...points.map(p => p.x));
-    const maxX = Math.max(...points.map(p => p.x));
-    const minY = Math.min(...points.map(p => p.y));
-    const maxY = Math.max(...points.map(p => p.y));
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
 
     const scale = Math.min(
         (w - 40) / (maxX - minX),
@@ -178,14 +225,10 @@ function draw(progress) {
     );
 
     ctx.setTransform(
-        dpr * scale, 0, 0, dpr * scale,
+        dpr * scale, 0,
+        0, dpr * scale,
         dpr * (w - (maxX - minX) * scale) / 2 - dpr * minX * scale,
         dpr * (h - (maxY - minY) * scale) / 2 - dpr * minY * scale
-    );
-
-    ctx.clearRect(
-        minX - 1000, minY - 1000,
-        w / scale + 2000, h / scale + 2000
     );
 
     let remaining = Math.floor(progress * allPoints);
@@ -193,6 +236,7 @@ function draw(progress) {
     for (const stroke of strokes) {
         const pts = stroke.points;
         const count = Math.min(remaining, pts.length);
+
         remaining -= count;
 
         if (count < 2) continue;
@@ -212,10 +256,18 @@ function draw(progress) {
     }
 }
 
-let startTime;
+let startTime = null;
 
 function animate(timestamp) {
-    const progress = Math.min((timestamp - startTime) / 30000, 1);
+    if (startTime === null) {
+        startTime = timestamp;
+    }
+
+    const progress = Math.min(
+        (timestamp - startTime) / 30000,
+        1
+    );
+
     draw(progress);
 
     if (progress < 1) {
@@ -224,20 +276,18 @@ function animate(timestamp) {
 }
 
 function startFlower() {
-    startTime = null;
-    draw(0);
+    document.getElementById("welcome").style.display = "none";
+    document.getElementById("flowerScreen").style.display = "flex";
 
     const music = document.getElementById("music");
     music.currentTime = 0;
-    music.play().catch(() => {});
-
-    requestAnimationFrame(timestamp => {
-        startTime = timestamp;
-        animate(timestamp);
+    music.play().catch(error => {
+        console.log("Music could not play:", error);
     });
-}
 
-draw(0);
+    startTime = null;
+    requestAnimationFrame(animate);
+}
 </script>
 
 </body>
